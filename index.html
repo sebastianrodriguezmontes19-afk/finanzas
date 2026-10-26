@@ -67,17 +67,19 @@ section[hidden]{display:none}
     <div class="row"><span>Gastado <b id="pg"></b> de <b id="pt"></b></span><button class="btn s ghost" id="editPres">Cambiar</button></div>
     <div class="bar"><i id="pbar"></i></div><div class="mu" id="pnota" style="margin-top:6px"></div></div>
   <div class="card"><h2>Gasto por categoría</h2><div id="cats"></div></div>
+  <div class="card"><h2>Transacciones recientes</h2><div id="rec"></div></div>
 </section>
 
 <section id="v-mov" hidden>
-  <div class="card"><h2>Nuevo movimiento</h2>
+  <div class="card"><h2>Nueva transacción</h2>
     <div class="seg"><button class="btn s" id="tG" type="button">Gasto</button><button class="btn s ghost" id="tI" type="button">Ingreso</button></div>
     <label for="monto">Monto</label><input id="monto" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0,00">
     <label for="desc">Descripción</label><input id="desc" placeholder="Ej.: supermercado">
     <label for="cat">Categoría</label><select id="cat"></select>
-    <button class="btn" id="add" type="button">Guardar movimiento</button>
+    <button class="btn" id="add" type="button">Guardar transacción</button>
   </div>
-  <div class="card"><h2>Movimientos recientes</h2><div id="lista"></div></div>
+  <div class="card"><h2>Mis categorías de gasto</h2><div id="chips" style="display:flex;flex-wrap:wrap;gap:8px"></div><div style="display:flex;gap:8px;margin-top:12px"><input id="nc" placeholder="Nueva categoría (ej.: mascotas)"><button class="btn s" id="addCat" type="button">Agregar</button></div></div>
+  <div class="card"><h2>Transacciones recientes</h2><div id="lista"></div></div>
 </section>
 
 <section id="v-metas" hidden>
@@ -91,14 +93,14 @@ section[hidden]{display:none}
 
 <nav role="tablist">
   <button role="tab" aria-selected="true" data-v="resumen">Resumen</button>
-  <button role="tab" aria-selected="false" data-v="mov">Movimientos</button>
+  <button role="tab" aria-selected="false" data-v="mov">Transacciones</button>
   <button role="tab" aria-selected="false" data-v="metas">Metas</button>
 </nav>
 
 <script>
 (function(){
 var KEY="finanzas-sandra-v1",CATS=["Comida","Vivienda","Transporte","Salud","Ocio","Suscripciones","Otros"];
-var S=load();
+var S=load();S.cats=S.cats||CATS.slice();
 function load(){try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);if(d&&d.movs)return d}}catch(e){}
   var h=new Date(),m=[];
   function f(mo,t,c,a,d,q){var x=new Date(h.getFullYear(),h.getMonth()-mo,5);m.push({id:Math.random().toString(36).slice(2),t:t,c:c,a:a,d:d,q:q,f:x.toISOString()})}
@@ -135,15 +137,22 @@ function render(){
   $("chart").innerHTML=s+'</svg><div class="mu"><span class="in">■</span> Ingresos &nbsp; <span class="ex">■</span> Gastos</div>';
   // categorias
   var cs=Object.keys(por).sort(function(a,b){return por[b]-por[a]});
-  $("cats").innerHTML=cs.length?cs.map(function(c){return'<div class="row" style="display:block"><div style="display:flex;justify-content:space-between"><span>'+esc(c)+'</span><b>'+eur(por[c])+'</b></div><div class="bar"><i style="width:'+(por[c]/tg*100)+'%"></i></div></div>'}).join(""):'<div class="empty">Aún no hay gastos este mes.</div>';
+  var COL=["#4338ca","#16a34a","#f59e0b","#e11d48","#0ea5e9","#a855f7","#64748b","#14b8a6","#f97316","#84cc16"];
+  if(cs.length){var R=15.9155,off=0,dn='<svg viewBox="0 0 42 42" width="160" height="160" role="img" aria-label="Gasto por categoría" style="display:block;margin:0 auto 8px"><circle cx="21" cy="21" r="'+R+'" fill="none" stroke="var(--ac2)" stroke-width="6"/>';
+    cs.forEach(function(c,k){var pc=por[c]/tg*100;dn+='<circle cx="21" cy="21" r="'+R+'" fill="none" stroke="'+COL[k%COL.length]+'" stroke-width="6" stroke-dasharray="'+pc+' '+(100-pc)+'" stroke-dashoffset="'+(25-off)+'"/>';off+=pc});
+    dn+='<text x="21" y="22.4" text-anchor="middle" font-size="4.2" font-weight="700" fill="var(--tx)">'+eur(tg)+'</text></svg>';
+    $("cats").innerHTML=dn+cs.map(function(c,k){return'<div class="row"><span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+COL[k%COL.length]+';margin-right:8px"></span>'+esc(c)+'</span><span><b>'+eur(por[c])+'</b> <span class="mu">'+Math.round(por[c]/tg*100)+'%</span></span></div>'}).join("")}
+  else{$("cats").innerHTML='<div class="empty">Aún no hay gastos este mes.</div>'}
   // lista
   var l=S.movs.slice().sort(function(a,b){return new Date(b.f)-new Date(a.f)}).slice(0,25);
   $("lista").innerHTML=l.length?l.map(function(m){return'<div class="row"><div><div>'+esc(m.d||m.c)+'</div><div class="mu">'+esc(m.c)+' · '+new Date(m.f).toLocaleDateString("es-ES",{day:"numeric",month:"short"})+'</div></div><div><b class="'+(m.t==="i"?"in":"ex")+'">'+(m.t==="i"?"+":"−")+eur(m.a)+'</b> <button class="x" data-del="'+m.id+'" aria-label="Eliminar">×</button></div></div>'}).join(""):'<div class="empty">Agrega tu primer movimiento arriba.</div>';
+  var rc=l.slice(0,5);$("rec").innerHTML=rc.length?rc.map(function(m){return'<div class="row"><div><div>'+esc(m.d||m.c)+'</div><div class="mu">'+esc(m.c)+' · '+new Date(m.f).toLocaleDateString("es-ES",{day:"numeric",month:"short"})+'</div></div><b class="'+(m.t==="i"?"in":"ex")+'">'+(m.t==="i"?"+":"−")+eur(m.a)+'</b></div>'}).join(""):'<div class="empty">Aún no hay transacciones. Agrega una en la pestaña Transacciones.</div>';
+  $("chips").innerHTML=S.cats.map(function(c){return'<span class="who" style="padding:6px 10px;font-size:.85rem">'+esc(c)+' <button class="x" data-dcat="'+esc(c)+'" aria-label="Quitar '+esc(c)+'" style="font-size:1rem;padding:0 0 0 4px">×</button></span>'}).join("");
   // metas
   $("metas").innerHTML=S.metas.length?S.metas.map(function(m){var q=Math.min(100,m.a/m.o*100);return'<div class="card"><div class="row" style="border:0;padding:0"><b>'+esc(m.n)+'</b><button class="x" data-delm="'+m.id+'" aria-label="Eliminar meta">×</button></div><div class="mu">'+eur(m.a)+' de '+eur(m.o)+' ('+Math.round(q)+'%)</div><div class="bar"><i style="width:'+q+'%"></i></div><div style="display:flex;gap:8px;margin-top:12px"><input type="number" inputmode="decimal" min="0" placeholder="Monto" id="ab'+m.id+'"><button class="btn s" data-ab="'+m.id+'">Abonar</button></div></div>'}).join(""):'<div class="empty">Crea tu primera meta de ahorro.</div>';
 }
 function fillSel(){
-  $("cat").innerHTML=(tipo==="i"?["Sueldo","Extra","Otros"]:CATS).map(function(c){return"<option>"+c+"</option>"}).join("");
+  $("cat").innerHTML=(tipo==="i"?["Sueldo","Extra","Otros"]:S.cats).map(function(c){return"<option>"+c+"</option>"}).join("");
 }
 function setTipo(t){tipo=t;$("tG").className="btn s"+(t==="g"?"":" ghost");$("tI").className="btn s"+(t==="i"?"":" ghost");fillSel()}
 $("tG").onclick=function(){setTipo("g")};$("tI").onclick=function(){setTipo("i")};
@@ -153,7 +162,8 @@ $("add").onclick=function(){var a=parseFloat($("monto").value);if(!(a>0)){$("mon
 $("editPres").onclick=function(){var v=parseFloat(prompt("Presupuesto mensual (S/):",S.pres));if(v>0){S.pres=v;save();render()}};
 $("hola").onclick=function(){var a=prompt("Tu nombre:",S.nombre);if(a&&a.trim()){S.nombre=a.trim();save();render()}};
 $("addMeta").onclick=function(){var n=$("mn").value.trim(),o=parseFloat($("mo").value);if(!n||!(o>0))return;S.metas.push({id:Math.random().toString(36).slice(2),n:n,o:o,a:0});$("mn").value="";$("mo").value="";save();render()};
-document.addEventListener("click",function(e){var t=e.target;
+$("addCat").onclick=function(){var n=$("nc").value.trim();if(!n)return;if(S.cats.some(function(c){return c.toLowerCase()===n.toLowerCase()})){$("nc").value="";return}S.cats.push(n);$("nc").value="";save();fillSel();if(tipo==="g")$("cat").value=n;render()};
+document.addEventListener("click",function(e){var t=e.target;if(t.dataset.dcat&&S.cats.length>1){S.cats=S.cats.filter(function(c){return c!==t.dataset.dcat});save();fillSel();render()}
   if(t.dataset.del){S.movs=S.movs.filter(function(m){return m.id!==t.dataset.del});save();render()}
   if(t.dataset.delm){S.metas=S.metas.filter(function(m){return m.id!==t.dataset.delm});save();render()}
   if(t.dataset.ab){var v=parseFloat($("ab"+t.dataset.ab).value);if(v>0){S.metas.forEach(function(m){if(m.id===t.dataset.ab)m.a+=v});save();render()}}
